@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 import sys
 
-initial_url = "https://www.olx.pl/nieruchomosci/mieszkania/wynajem/gdansk/"
+initial_url = "https://www.olx.pl/d/nieruchomosci/mieszkania/wynajem/wroclaw/"
 
 
 def last_page():
@@ -19,7 +19,7 @@ def last_page():
 
     response_initial = requests.get(initial_url)
     soup = BeautifulSoup(response_initial.text, 'html.parser')
-    pages = soup.findAll('a', attrs={"class": "block br3 brc8 large tdnone lheight24"})
+    pages = soup.findAll('a', attrs={"class": "css-1mi714g"})
     last_page = int(pages[-1].text.split(None, 1)[0])
     return last_page
 
@@ -43,16 +43,21 @@ def load_flats_initial():
         response = requests.get(initial_url + "?page=" + str(x))
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        links = soup.select('a[class*="marginright5 link linkWithHash"]')
-        titles = soup.findAll('h3', attrs={"class": "lheight22 margintop5"})
-        prices = soup.findAll('p', attrs={"class": "price"})
+        #links = soup.findAll('a', href=re.compile("/d/oferta/"))
+        links = soup.findAll('a', attrs={"class": "css-1bbgabe"})
+        titles = soup.findAll('p', attrs={"class": "css-cqgwae-Text eu5v0x0"})
+        prices = soup.findAll('p', attrs={"class": "css-1v0u9e8-Text eu5v0x0"})
 
         results_links = []
         results_names = []
         results_prices = []
 
         for l in links:
-            results_links.append(l.get('href'))
+            l = l.get('href')
+            if l.split("/")[2] != "www.otodom.pl":
+                results_links.append("https://www.olx.pl" + l)
+            else:
+                results_links.append(l)
         for t in titles:
             results_names.append(t.text)
         for p in prices:
@@ -220,7 +225,7 @@ def load_flats_table():
         df["Add_cost"] = df["Add_cost"].str.replace(",", ".")
         df["Add_cost"] = df["Add_cost"].replace(np.nan, 0)
 
-        df["Price"] = df["Price"].str.replace("zł ", "")
+        df["Price"] = df["Price"].str.replace("zł", "")
         df["Price"] = df["Price"].str.replace(",", ".")
         df["Price"] = df["Price"].str.replace(" ", "")
 

@@ -6,13 +6,9 @@ import numpy as np
 from tqdm import tqdm
 import sys
 
-from rrs.user_input import select_city
-
-
 def initial_url(city):
-    url = "https://www.olx.pl/d/nieruchomosci/mieszkania/wynajem/" + city + "/"
+    url = "https://www.olx.pl/nieruchomosci/mieszkania/wynajem/" + city + "/"
     return url
-
 
 def last_page(city):
     """
@@ -24,10 +20,9 @@ def last_page(city):
 
     response_initial = requests.get(initial_url(city))
     soup = BeautifulSoup(response_initial.text, 'html.parser')
-    pages = soup.findAll('a', attrs={"class": "css-1mi714g"})
+    pages = soup.findAll('a', attrs={"class": "block br3 brc8 large tdnone lheight24"})
     last_page = int(pages[-1].text.split(None, 1)[0])
     return last_page
-
 
 def load_flats_initial(city):
     """
@@ -40,7 +35,7 @@ def load_flats_initial(city):
 
     print("Loading initial table")
 
-    page = 0
+    page = 23
 
     df_new = pd.DataFrame()
 
@@ -49,10 +44,10 @@ def load_flats_initial(city):
         response = requests.get(initial_url(city) + "?page=" + str(x))
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # links = soup.findAll('a', href=re.compile("/d/oferta/"))
-        links = soup.findAll('a', attrs={"class": "css-1bbgabe"})
-        titles = soup.findAll('p', attrs={"class": "css-cqgwae-Text eu5v0x0"})
-        prices = soup.findAll('p', attrs={"class": "css-1v0u9e8-Text eu5v0x0"})
+        #using re.compile to find a class that contains "marginright5 link linkWithHash" togather with Promoted flats
+        links = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
+        titles = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
+        prices = soup.findAll('p', attrs={"class": "price"})
 
         results_links = []
         results_names = []
@@ -60,14 +55,13 @@ def load_flats_initial(city):
 
         for l in links:
             l = l.get('href')
-            if l.split("/")[2] != "www.otodom.pl":
-                results_links.append("https://www.olx.pl" + l)
-            else:
-                results_links.append(l)
+            results_links.append(l)
+
         for t in titles:
-            results_names.append(t.text)
+            results_names.append(t.find("strong").text)
+
         for p in prices:
-            results_prices.append(p.text)
+            results_prices.append(p.find("strong").text)
 
         df = pd.DataFrame({'Names': results_names,
                            'Price': results_prices,
@@ -85,117 +79,65 @@ def load_flats_initial(city):
 
     return df_new
 
-
-def olx_site_cost(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract additional cost number from a page
-    """
-
-    pattern = re.compile('Czynsz')
-    response = requests.get(link)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.findAll('p', text=pattern, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    # additional_val = soup.findAll('p', attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    try:
-        value = additional_val[0].text
-
-        value = value.split(":")[-1].replace("zł", "")
-    except:
-        value = 0
-    return value
-
-
-def olx_site_rooms(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract number of rooms from a page
-    """
-
-    pattern = re.compile('Liczba pokoi:')
-    response = requests.get(link)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.findAll('p', text=pattern, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    # additional_val = soup.findAll('p', attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    try:
-        value = additional_val[0].text
-        value = value.split(" ")[-2]
-    except:
-        value = 0
-    return value
-
-
-def olx_site_m2(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract size of rooms from a page
-    """
-
-    pattern = re.compile('Powierzchnia:')
-    response = requests.get(link)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.findAll('p', text=pattern, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    # additional_val = soup.findAll('p', attrs={"class": "css-xl6fe0-Text eu5v0x0"})
-    try:
-        value = additional_val[0].text
-        value = value.split(" ")[-2]
-    except:
-        value = 0
-    return value
-
-
-def otodom_site_cost(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract additional cost number from a page
-    """
+def olx_site(link):
+    pattern_czynsz = re.compile('Czynsz')
+    pattern_numb_rooms = re.compile('Liczba pokoi:')
+    pattern_sqr = re.compile('Powierzchnia:')
 
     response = requests.get(link)
     soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.find('div', attrs={"title": "Czynsz - dodatkowo"})
+
+    czynsz_i = soup.findAll('p', text=pattern_czynsz, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
     try:
-        value = additional_val.find_next_siblings()[1].text
-        value = value.split(" ")[-2]
+        czynsz = czynsz_i[0].text
+        czynsz = czynsz.split(":")[-1].replace("zł", "")
     except:
-        value = 0
-    return value
+        czynsz = 0
+
+    numb_rooms_i = soup.findAll('p', text=pattern_numb_rooms, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
+    try:
+        numb_rooms = numb_rooms_i[0].text
+        numb_rooms = numb_rooms.split(" ")[-2]
+    except:
+        numb_rooms = 0
 
 
-def otodom_site_rooms(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract number of rooms from a page
-    """
+    sqr_i = soup.findAll('p', text=pattern_sqr, attrs={"class": "css-xl6fe0-Text eu5v0x0"})
+    try:
+        sqr = sqr_i[0].text
+        sqr = sqr.split(" ")[-2]
+    except:
+        sqr = 0
 
+    return czynsz, numb_rooms, sqr
+
+def otodom_site(link):
     response = requests.get(link)
     soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.find('div', attrs={"title": "Liczba pokoi"})
+
+    czynsz_i = soup.find('div', attrs={"aria-label": "Czynsz"})
     try:
-        value = additional_val.find_next_siblings()[0].text
-        # value = value.split(" ")[-2]
+        czynsz = czynsz_i.text
+        czynsz = czynsz.replace(" ", "")
+        czynsz = re.findall("\d+", czynsz)[0]
     except:
-        value = 0
-    return value
+        czynsz = 0
 
-
-def otodom_site_m2(link):
-    """
-    Based on Site value from final table of function load_flats_initial() return
-    this function will call a link from above table, and extract size of rooms from a page
-    """
-
-    response = requests.get(link)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    additional_val = soup.find('div', attrs={"title": "Powierzchnia"})
+    numb_rooms_i = soup.find('div', attrs={"aria-label": "Liczba pokoi"})
     try:
-        if len(additional_val.find_next_siblings()) > 1:  # stupid thing. it takes random html line from web
-            value = additional_val.find_next_siblings()[1].text.split(" ")[0]
-        else:
-            value = additional_val.find_next_siblings()[0].text.split(" ")[0]
+        numb_rooms = numb_rooms_i.text
+        numb_rooms = re.findall("\d+", numb_rooms)[0]
     except:
-        value = 0
-    return value
+        numb_rooms = 0
 
+    sqr_i = soup.find('div', attrs={"aria-label": "Powierzchnia"})
+    try:
+        sqr = sqr_i.text
+        sqr = re.findall("\d+", sqr)[0]
+    except:
+        sqr = 0
+
+    return czynsz, numb_rooms, sqr
 
 def load_flats_table(city):
     """
@@ -204,31 +146,34 @@ def load_flats_table(city):
     """
 
     df = load_flats_initial(city)
-    czynsz_list = []
-    rooms_list = []
-    m2_list = []
+    czynsz_list, rooms_list, m2_list = [], [], []
+
     with tqdm(total=len(df), file=sys.stdout, desc="Progress") as pbar:
         for l, t in zip(df["Site"], df["Links"]):
             try:
                 if l == "www.olx.pl":
-                    czynsz_list.append(olx_site_cost(t))
-                    rooms_list.append((olx_site_rooms(t)))
-                    m2_list.append((olx_site_m2(t)))
+                    results = [olx_site(t)]
+                    czynsz_list.append(results[0][0])
+                    rooms_list.append(results[0][1])
+                    m2_list.append(results[0][2])
                 elif l == "www.otodom.pl":
-                    czynsz_list.append(otodom_site_cost(t))
-                    rooms_list.append(otodom_site_rooms(t))
-                    m2_list.append(otodom_site_m2(t))
+                    results = [otodom_site(t)]
+                    czynsz_list.append(results[0][0])
+                    rooms_list.append(results[0][1])
+                    m2_list.append(results[0][2])
             except:
-
                 czynsz_list.append("no details")
             pbar.update(1)
 
     try:
         df["Add_cost"] = czynsz_list
+
         df["Num of rooms"] = rooms_list
         df["Num of rooms"] = df["Num of rooms"].replace("pokoi:", "1")
         df["Num of rooms"] = df["Num of rooms"].replace("i", "4+")
+
         df["Size"] = m2_list
+        df["Size"] = df["Size"].replace(np.nan, 0)
 
         df["Add_cost"] = df["Add_cost"].str.replace(" ", "")
         df["Add_cost"] = df["Add_cost"].str.replace(",", ".")

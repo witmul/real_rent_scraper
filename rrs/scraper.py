@@ -35,7 +35,7 @@ def load_flats_initial(city):
 
     print("Loading initial table")
 
-    page = 23
+    page = 0
 
     df_new = pd.DataFrame()
 

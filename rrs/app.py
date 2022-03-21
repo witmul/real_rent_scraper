@@ -2,7 +2,10 @@ import pandas as pd
 import sqlite3
 from db.db_dir import _starting_dir
 from dash import Dash, Input, Output, html, dcc
+
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Connect to the database
 conn = sqlite3.connect(_starting_dir() + "\db_flats.db")
@@ -24,9 +27,10 @@ for city in sql_query["miasto"].unique():
 
 data = empty_df[["Names", "miasto", "Price", "Add_cost", "Total", "Num of rooms", "Size", "zl/m2", "data"]]
 data = data[data["Total"] < 8000]
+data = data[data["Total"] > 200]
 
 mean_total_city = data.groupby(["miasto", "data"])["Total"].mean()
-
+count_total_city = data.groupby(["miasto", "data"])["Names"].count()
 
 app = Dash(__name__)
 
@@ -51,7 +55,15 @@ app.layout = html.Div([
 )
 def display_hist(city):
     dataa = data[data["miasto"] == city]
-    fig = px.histogram(dataa, x=dataa["Total"], nbins = 50)
+
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=dataa["Total"].tolist(),
+        name='test',  # name used in legend and hover labels
+    ))
+
+
+    #fig = px.histogram(dataa, x=dataa["Total"], nbins = 50)
     return fig
 
 @app.callback(
@@ -59,9 +71,28 @@ def display_hist(city):
     Input("city", "value"),
 )
 def display_line(city):
-    dataa = mean_total_city[city].to_frame()
-    fig2 = px.line(dataa) #include count of flats on second axis!!!
-    return fig2
+    data_mean = mean_total_city[city].to_frame()
+    data_count = count_total_city[city].to_frame()
+
+    # Create figure with secondary y-axis
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Add traces
+    fig.add_trace(
+        go.Scatter(x=data_mean.index.tolist(),
+                   y=data_mean.iloc[:, 0],
+                   name="Srednia cena wynajmu mieszkania"),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Scatter(x=data_count.index.tolist(),
+                   y=data_count.iloc[:, 0],
+                   name="Ogolna liczba ofert na platformie"),
+        secondary_y=True,
+    )
+
+    return fig
 
 if __name__ == "__main__":
     app.run_server(debug=True)

@@ -27,6 +27,7 @@ data = data[data["Total"] < 8000]
 
 mean_total_city = data.groupby(["miasto", "data"])["Total"].mean()
 
+
 app = Dash(__name__)
 
 app.layout = html.Div([
@@ -36,28 +37,31 @@ app.layout = html.Div([
 
     dcc.Dropdown(
         data["miasto"].unique(),
-        placeholder="Select a city",
+        value=data["miasto"].unique()[0],
+        #placeholder="Select a city",
         id = "city"),
 
-    dcc.DatePickerSingle(
-        id='my-date-picker-single',
-        disabled_days = ['2022-03-25', '2022-03-26']
-    ),
-
-    dcc.Graph(id="graph"),
+    dcc.Graph(id="histogram"),
+    dcc.Graph(id="line"),
 ])
 
 @app.callback(
-    Output("graph", "figure"),
+    Output("histogram", "figure"),
     Input("city", "value"),
-
 )
 def display_hist(city):
-    dataa = data[data["miasto"] == city] # replace with your own data source
-    fig = px.histogram(dataa, x=dataa["Total"])
+    dataa = data[data["miasto"] == city]
+    fig = px.histogram(dataa, x=dataa["Total"], nbins = 50)
     return fig
 
-app.run_server(debug=True)
+@app.callback(
+    Output("line", "figure"),
+    Input("city", "value"),
+)
+def display_line(city):
+    dataa = mean_total_city[city].to_frame()
+    fig2 = px.line(dataa) #include count of flats on second axis!!!
+    return fig2
 
 if __name__ == "__main__":
     app.run_server(debug=True)

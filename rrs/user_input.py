@@ -29,6 +29,13 @@ def select_city():
         print("Wybrane miasta: " + cities_str)
         return cashe_list
 
+    elif input_numbers == [10]:
+        print("Wybrane wszystkie miasta")
+        all_cities = ["Warszawa", "Krakow", "Lodz", "Wroclaw",
+                      "Poznan", "Gdansk", "Szczecin", "Bydgoszcz",
+                      "Lublin", "Bialystok"]
+        return all_cities
+
     else:
         print("Wybrane miasto: " + cities[int(val)][0])
         i = cities[int(val)]

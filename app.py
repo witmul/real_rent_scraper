@@ -1,7 +1,7 @@
 import pandas as pd
 import sqlite3
 from db.db_dir import _starting_dir
-from dash import Dash, Input, Output, html, dcc
+from dash import Dash, Input, Output, html, dcc, dash_table
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -25,7 +25,15 @@ for city in sql_query["miasto"].unique():
         city_df_date = city_df_date.drop_duplicates()
         empty_df = empty_df.append(city_df_date)
 
-data = empty_df[["Names", "miasto", "Price", "Add_cost", "Total", "Num of rooms", "Size", "zl/m2", "data"]]
+empty_df.rename(columns = {'Names':'Description',
+                           'Add_cost':'Additional_cost',
+                           'Num of rooms':'Rooms_Number',
+                           'data':'Load_Date',
+                           'miasto':'City'},
+                inplace = True)
+
+data = empty_df[["Description", "City", "Price", "Additional_cost", "Total", "Rooms_Number", "Size", "zl/m2", "Load_Date"]]
+
 data = data[data["Total"] < 15000] # need to limit amount of flats
 
 #data["Num of rooms"].unique()
@@ -50,47 +58,57 @@ app.title = "Real Rent App!"
 
 app.layout = html.Div(
     children=[
-        html.Div(children=[
-            html.H1(children='Real Rent Scraper Results:',
-                    className="header-title"),
-        ]
-        ),
-        html.Div(children=[
-            html.Div(children=[
-                html.Br(),
-                html.Label('Please select a city:',
-                            className="menu-title"),
-                dcc.Dropdown(
-                    data["miasto"].unique(),
-                    value=data["miasto"].unique()[0],
-                    #placeholder="Select a city",
-                    id="city")
-            ]
-            ),
+        dcc.Tabs([
+                dcc.Tab(label='Tab one', children=[
 
-            html.Div(children=[
-                html.Br(),
-                html.Label('Please min and max prices for rent:',
-                           className="menu-title"),
-                dcc.RangeSlider(0,
-                                max(data["Total"]),
-                                value=[500, 2500],
-                                tooltip={"placement": "bottom", "always_visible": True},
-                                id="range-slider")
-            ]
-            ),
-        ],
-        className="menu",
-        ),
+                        html.Div(children=[
+                            html.H1(children='Real Rent Scraper Results:',
+                                    className="header-title"),
+                        ]
+                        ),
+                        html.Div(children=[
+                            html.Div(children=[
+                                html.Br(),
+                                html.Label('Please select a city:',
+                                            className="menu-title"),
+                                dcc.Dropdown(
+                                    data["City"].unique(),
+                                    value=data["City"].unique()[0],
+                                    multi=False,
+                                    id="city")
+                            ]
+                            ),
+                            html.Div(children=[
+                                html.Br(),
+                                html.Label('Please min and max prices for rent:',
+                                           className="menu-title"),
+                                dcc.RangeSlider(0,
+                                                max(data["Total"]),
+                                                value=[500, 2500],
+                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                id="range-slider")
+                            ]
+                            ),
+                        ],
+                        className="menu",
+                        ),
+                        dcc.Graph(id="histogram",
+                                  className="card"),
+                        dcc.Graph(id="line",
+                                  className="card"),
+                    ]
 
-        dcc.Graph(id="histogram",
-                  className="card"),
-        dcc.Graph(id="line",
-                  className="card"),
-    ],
+                ),
+            dcc.Tab(label='Tab two', children=[
+
+                html.Div(children=[
+                    html.H1(children='Real Rent Scraper Results:',
+                            className="header-title"),
+                ]),
+            ])],
+        )],
     className="wrapper",
 )
-
 #<====================== Histogram Callback
 @app.callback(
     Output("histogram", "figure"),
@@ -98,7 +116,8 @@ app.layout = html.Div(
     Input("range-slider", "value")
 )
 def display_hist(city, price):
-    dataa = data[data["miasto"] == city]
+    #dataa = data[data["miasto"].isin([city])]
+    dataa = data[data["City"] == city]
     dataa = dataa[dataa["Total"].between(price[0], price[1])]
 
     fig = go.Figure()
@@ -116,11 +135,12 @@ def display_hist(city, price):
     Input("range-slider", "value")
 )
 def display_line(city, price):
-    dataa = data[data["miasto"] == city]
+    dataa = data[data["City"] == city]
+    #dataa = data[data["miasto"].isin([city])]
     dataa = dataa[dataa["Total"].between(price[0], price[1])]
 
-    mean_total_city = dataa.groupby(["miasto", "data"])["Total"].mean()
-    count_total_city = dataa.groupby(["miasto", "data"])["Names"].count()
+    mean_total_city = dataa.groupby(["City", "Load_Date"])["Total"].mean()
+    count_total_city = dataa.groupby(["City", "Load_Date"])["Description"].count()
 
     data_mean = mean_total_city[city].to_frame() #should include city to avoid multyindexing
     data_count = count_total_city[city].to_frame()

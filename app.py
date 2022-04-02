@@ -33,9 +33,8 @@ empty_df.rename(columns = {'Names':'Description',
                 inplace = True)
 
 data = empty_df[["Description", "City", "Price", "Additional_cost", "Total", "Rooms_Number", "Size", "zl/m2", "Load_Date"]]
-
-data = data[data["Total"] < 15000] # need to limit amount of flats
-
+data = data[data["Total"] < 15000].copy() # need to limit amount of flats / copy just to remove error
+data['Load_Date'] = pd.to_datetime(data['Load_Date']).dt.date
 #data["Num of rooms"].unique()
 
 #########################
@@ -80,11 +79,11 @@ app.layout = html.Div(
                             ),
                             html.Div(children=[
                                 html.Br(),
-                                html.Label('Please min and max prices for rent:',
+                                html.Label('Please select min and max prices for rent:',
                                            className="menu-title"),
                                 dcc.RangeSlider(0,
                                                 max(data["Total"]),
-                                                value=[500, 2500],
+                                                value=[500, 5000],
                                                 tooltip={"placement": "bottom", "always_visible": True},
                                                 id="range-slider")
                             ]
@@ -124,8 +123,25 @@ def display_hist(city, price):
 
     fig.add_trace(go.Histogram(
         x=dataa["Total"].tolist(),
-        name='test',  # name used in legend and hover labels
+        name='flats',
+        xbins=dict(
+            start=price[0],
+            end=price[1],
+            size=100
+        ),
+        marker_color='#00a8a8',
+        opacity=0.75
+        # name used in legend and hover labels
     ))
+
+    fig.update_layout(
+        title_text='Rent Prices Results',  # title of plot
+        xaxis_title_text='Price in PLN per month',  # xaxis label
+        yaxis_title_text='Number of flats',  # yaxis label
+        bargap=0.05,  # gap between bars of adjacent location coordinates
+        #bargroupgap=0.1  # gap between bars of the same location coordinates
+    )
+
     return fig
 
 #<====================== Line Graph Callback
@@ -152,15 +168,32 @@ def display_line(city, price):
     fig.add_trace(
         go.Scatter(x=data_mean.index.tolist(),
                    y=data_mean.iloc[:, 0],
-                   name="Srednia cena wynajmu mieszkania"),
+                   name="Mean rent price per month",
+                   mode='lines',
+                   marker_color='#00d6d6'),
         secondary_y=False,
     )
     fig.add_trace(
         go.Scatter(x=data_count.index.tolist(),
                    y=data_count.iloc[:, 0],
-                   name="Ogolna liczba ofert na platformie"),
+                   name="Number of unique offers on the platform",
+                   mode='lines',
+                   marker_color='#651a1a'),
         secondary_y=True,
     )
+
+    fig.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Mean rent price per month in PLN", secondary_y=False)
+    fig.update_yaxes(title_text="Number of unique offers on the platform", secondary_y=True)
+
     return fig
 
 if __name__ == "__main__":

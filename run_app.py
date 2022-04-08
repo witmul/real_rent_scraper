@@ -19,7 +19,8 @@ if val == "0":
 elif val == "1":
     from db import save_in_db
 elif val == "2":
-    subprocess.call(os.path.dirname(__file__) + "\\rrs\\app.py", shell=True)
+
+    subprocess.call(os.path.dirname(__file__) + "\\db\\app.py", shell=True)
     input("Load completed. Press ENTER to proceed")
 else:
     print("Action index is not on the list!")

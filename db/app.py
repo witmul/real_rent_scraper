@@ -1,6 +1,7 @@
 import pandas as pd
 import sqlite3
-from db.db_dir import _starting_dir
+#from db.db_dir import _starting_dir
+from db_dir import _starting_dir
 from dash import Dash, Input, Output, html, dcc, dash_table
 
 import plotly.graph_objects as go

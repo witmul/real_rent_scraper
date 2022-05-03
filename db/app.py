@@ -56,59 +56,104 @@ app.title = "Real Rent App!"
 
 #app = Dash(__name__)
 
-app.layout = html.Div(
-    children=[
-        dcc.Tabs([
-                dcc.Tab(label='Tab one', children=[
 
-                        html.Div(children=[
-                            html.H1(children='Real Rent Scraper Results:',
-                                    className="header-title"),
-                        ]
-                        ),
-                        html.Div(children=[
-                            html.Div(children=[
-                                html.Br(),
-                                html.Label('Please select a city:',
-                                            className="menu-title"),
-                                dcc.Dropdown(
-                                    data["City"].unique(),
-                                    value=data["City"].unique()[0],
-                                    multi=False,
-                                    id="city")
-                            ]
-                            ),
-                            html.Div(children=[
-                                html.Br(),
-                                html.Label('Please select min and max prices for rent:',
-                                           className="menu-title"),
-                                dcc.RangeSlider(0,
-                                                max(data["Total"]),
-                                                value=[500, 5000],
-                                                tooltip={"placement": "bottom", "always_visible": True},
-                                                id="range-slider")
-                            ]
-                            ),
-                        ],
-                        className="menu",
-                        ),
-                        dcc.Graph(id="histogram",
-                                  className="card"),
-                        dcc.Graph(id="line",
-                                  className="card"),
-                    ]
-
-                ),
-            dcc.Tab(label='Tab two', children=[
-
-                html.Div(children=[
-                    html.H1(children='Real Rent Scraper Results:',
-                            className="header-title"),
-                ]),
-            ])],
-        )],
-    className="wrapper",
+title = html.Div(
+    [
+    html.H1('Real Rent Scraper Results:',
+            className="header-title")
+    ]
 )
+
+city_dropdown = html.Div(
+    [
+        html.Br(),
+        html.Label('Please select a city:',className="menu-title"),
+        dcc.Dropdown(
+            data["City"].unique(),
+            value=data["City"].unique()[0],
+            multi=False,
+            id="city")
+    ]
+)
+
+
+price_range = html.Div(
+    [
+        html.Br(),
+        html.Label('Please select min and max prices for rent:',className="menu-title"),
+        dcc.RangeSlider(
+            0,
+            max(data["Total"]),
+            value=[500, 5000],
+            tooltip={"placement": "bottom", "always_visible": True},
+            id="range-slider")
+    ]
+)
+
+graph_hist = dcc.Graph(id="histogram", className="card")
+
+graph_line = dcc.Graph(id="line", className="card")
+
+
+
+final_table = html.Div(
+    [
+        dash_table.DataTable(
+            data = sql_query.to_dict('records'),
+            id='datatable-all',
+            columns=[{"name": i, "id": i} for i in sorted(sql_query.columns)],
+            page_current=0,
+            page_size=500,
+            virtualization=True,
+            page_action='native',
+            filter_action="native",
+            sort_action="native",
+            sort_mode="multi"
+        )
+    ]
+)
+
+tab_one = dcc.Tab(
+    label='Tab one',
+    children=
+    [
+        title,
+        html.Div(
+            [
+                city_dropdown,
+                price_range,
+            ],
+            className="menu"
+        ),
+        graph_hist,
+        graph_line
+    ]
+)
+
+
+tab_two = dcc.Tab(
+    label='Tab two',
+    children=
+    [
+        title,
+        final_table
+    ]
+)
+
+tabs = dcc.Tabs(
+    [
+        tab_one,
+        tab_two
+    ]
+)
+
+app.layout = html.Div(
+    [
+        tabs
+    ], className="wrapper"
+)
+
+
 #<====================== Histogram Callback
 @app.callback(
     Output("histogram", "figure"),

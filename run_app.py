@@ -1,5 +1,9 @@
-from tabulate import tabulate
 import subprocess
+subprocess.call("pip3 install Werkzeug==2.0.0") # need to downgrade this one for Dash to work
+subprocess.call("pip3 install tabulate")
+
+
+from tabulate import tabulate
 import os
 
 

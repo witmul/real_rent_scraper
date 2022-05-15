@@ -11,7 +11,7 @@ city_list = select_city()
 
 if len(city_list) > 1:
     for city in city_list:
-        print("Working on flats from" + city)
+        print("Working on flats from " + city)
         df = load_flats_table(city)
         df.to_sql('flats_rent', conn, if_exists='append', index=False)
 else:

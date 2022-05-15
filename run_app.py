@@ -18,7 +18,8 @@ val = input("Please select index of action: ")
 
 if val == "0":
     #os.system("pip3 install -r requirements.txt")
-    subprocess.call("pip3 install -r requirements.txt", shell=True)
+    req = os.path.dirname(__file__) + "\\requirements.txt"
+    subprocess.call("pip3 install -r" + req, shell=True)
     input("Load completed. Press ENTER to proceed")
 
 elif val == "1":

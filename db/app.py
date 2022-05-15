@@ -76,6 +76,17 @@ city_dropdown = html.Div(
     ]
 )
 
+city_dropdown_2 = html.Div(
+    [
+        html.Br(),
+        html.Label('Please select a city:',className="menu-title"),
+        dcc.Dropdown(
+            data["City"].unique(),
+            value=data["City"].unique()[0],
+            multi=False,
+            id="city2")
+    ]
+)
 
 price_range = html.Div(
     [
@@ -99,14 +110,14 @@ graph_line = dcc.Graph(id="line", className="card")
 final_table = html.Div(
     [
         dash_table.DataTable(
-            data = sql_query.to_dict('records'),
-            id='datatable-all',
+            # data = sql_query.to_dict('records'),
+            id='latest-table',
             columns=[{"name": i, "id": i} for i in sorted(sql_query.columns)],
             page_current=0,
-            page_size=500,
+            page_size=100,
             virtualization=True,
             page_action='native',
-            filter_action="native",
+            #filter_action="native",
             sort_action="native",
             sort_mode="multi"
         )
@@ -136,6 +147,7 @@ tab_two = dcc.Tab(
     children=
     [
         title,
+        city_dropdown_2,
         final_table
     ]
 )
@@ -241,6 +253,19 @@ def display_line(city, price):
     fig.update_yaxes(title_text="Number of unique offers on the platform", secondary_y=True)
 
     return fig
+
+#<====================== Table Callback
+@app.callback(
+    Output("latest-table", "data"),
+    Input("city2", "value")
+)
+def display_line(city2):
+
+    df = sql_query[sql_query['miasto'] == city2]
+
+    return df.to_dict('records')
+
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)

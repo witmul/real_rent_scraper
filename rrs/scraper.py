@@ -20,8 +20,8 @@ def last_page(city):
 
     response_initial = requests.get(initial_url(city))
     soup = BeautifulSoup(response_initial.text, 'html.parser')
-    pages = soup.findAll('a', attrs={"class": "block br3 brc8 large tdnone lheight24"})
-    last_page = int(pages[-1].text.split(None, 1)[0])
+    pages = soup.findAll('div', attrs={"class": "css-4mw0p4"})
+    last_page = int(pages[-1].text.split("...", 1)[1])
     return last_page
 
 def load_flats_initial(city):
@@ -44,10 +44,15 @@ def load_flats_initial(city):
         response = requests.get(initial_url(city) + "?page=" + str(x))
         soup = BeautifulSoup(response.text, 'html.parser')
 
+
+        links = soup.findAll('a', attrs={"class": "css-1bbgabe"})
+        titles = soup.findAll('h6', attrs={"class": "css-v3vynn-Text eu5v0x0"})
+        prices = soup.findAll('p', attrs={"class": "css-l0108r-Text eu5v0x0"})
+
         #using re.compile to find a class that contains "marginright5 link linkWithHash" togather with Promoted flats
-        links = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
-        titles = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
-        prices = soup.findAll('p', attrs={"class": "price"})
+        # links = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
+        # titles = soup.findAll('a', attrs={"class": re.compile('.*marginright5 link linkWithHash.*')})
+        # prices = soup.findAll('p', attrs={"class": "price"})
 
         results_links = []
         results_names = []
@@ -58,10 +63,12 @@ def load_flats_initial(city):
             results_links.append(l)
 
         for t in titles:
-            results_names.append(t.find("strong").text)
+            #results_names.append(t.find("strong").text)
+            results_names.append(t.text)
 
         for p in prices:
-            results_prices.append(p.find("strong").text)
+            #results_prices.append(p.find("strong").text)
+            results_prices.append(p.text)
 
         df = pd.DataFrame({'Names': results_names,
                            'Price': results_prices,
@@ -73,7 +80,12 @@ def load_flats_initial(city):
         results_site = []
 
         for site in df_new["Links"]:
-            results_site.append(site.split("/")[2])
+            #after changes OLX site is not populating it's domain in links
+            if site[1] == "d":
+                df_new["Links"][df_new["Links"] == site] = "https://www.olx.pl" + site
+                results_site.append("www.olx.pl")
+            else:
+                results_site.append(site.split("/")[2])
 
         df_new["Site"] = results_site
 
@@ -182,6 +194,7 @@ def load_flats_table(city):
         df["Price"] = df["Price"].str.replace("zł", "")
         df["Price"] = df["Price"].str.replace(",", ".")
         df["Price"] = df["Price"].str.replace(" ", "")
+        df["Price"] = df["Price"].str.replace("donegocjacji", "") #new update
 
         df["Size"] = df["Size"].str.replace(" ", "")
         df["Size"] = df["Size"].str.replace(",", ".")
